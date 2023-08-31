@@ -1,0 +1,31 @@
+api_version: 1
+project_config:
+  project_name: 'local_spark'
+
+spark_config:
+  # Choice for spark runtime. Currently support: azure_synapse, databricks, local
+  spark_cluster: 'local'
+  spark_result_output_parts: '1'
+  local:
+    master: 'spark://spark-master:7077'
+    workspace: 'sandbox'
+    feathr_runtime_location: "/opt/feathr-runtime/feathr-runtime.jar"
+
+online_store:
+  redis:
+    # Redis configs to access Redis cluster
+    # Docker network resolvable name
+    host: 'redis'
+    port: 6379
+    ssl_enabled: False
+
+offline_store:
+  s3:
+    s3_enabled: true
+    s3_endpoint: 'minio'
+
+
+feature_registry:
+  # The API endpoint of the registry service with rbac
+  # Docker network resolvable name
+  api_endpoint: "http://rbac:18000/api/v1"

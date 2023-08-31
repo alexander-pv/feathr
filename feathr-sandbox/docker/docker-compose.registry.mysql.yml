@@ -1,0 +1,111 @@
+version: '3.9'
+
+name: feathr
+
+networks:
+  feathr:
+
+volumes:
+  mysql-rbac:
+  mysql-registry:
+
+
+services:
+
+  rbac:
+    build:
+      context: ../../registry/
+      dockerfile: access_control/Dockerfile
+    ports:
+      - "18000:${RBAC_LISTENING_PORT}"
+    environment:
+      RBAC_DATABASE: ${RBAC_DATABASE}
+      RBAC_CONNECTION_STR: ${RBAC_CONNECTION_STR}
+      RBAC_LISTENING_PORT: ${RBAC_LISTENING_PORT}
+      RBAC_API_BASE: ${RBAC_API_BASE}
+      RBAC_API_CLIENT_ID: ${RBAC_API_CLIENT_ID}
+      RBAC_API_AUDIENCE: ${RBAC_API_AUDIENCE}
+      RBAC_AAD_TENANT_ID: ${RBAC_AAD_TENANT_ID}
+      RBAC_AAD_INSTANCE: ${RBAC_AAD_INSTANCE}
+      RBAC_DEFAULT_ADMIN: ${RBAC_DEFAULT_ADMIN}
+      FEATHR_REGISTRY_URL: "http://registry:${FEATHR_REGISTRY_LISTENING_PORT}${FEATHR_API_BASE}"
+      LOGGING_LEVEL: ${LOGGING_LEVEL}
+      UVICORN_LOG_LEVEL: ${UVICORN_LOG_LEVEL}
+    networks:
+      - feathr
+    depends_on:
+      - mysql-rbac
+    restart: always
+
+  registry:
+    build:
+      context: ../../registry/
+      dockerfile: sql-registry/Dockerfile
+    ports:
+      - "8001:${FEATHR_REGISTRY_LISTENING_PORT}"
+    environment:
+      FEATHR_REGISTRY_DATABASE: ${FEATHR_REGISTRY_DATABASE}
+      FEATHR_REGISTRY_CONNECTION_STR: ${FEATHR_REGISTRY_CONNECTION_STR}
+      FEATHR_REGISTRY_LISTENING_PORT: ${FEATHR_REGISTRY_LISTENING_PORT}
+      FEATHR_API_BASE: ${FEATHR_API_BASE}
+      REGISTRY_DEBUGGING: ${REGISTRY_DEBUGGING:-0}
+      LOGGING_LEVEL: ${LOGGING_LEVEL}
+      UVICORN_LOG_LEVEL: ${UVICORN_LOG_LEVEL}
+    networks:
+      - feathr
+    depends_on:
+      - mysql-registry
+    restart: always
+
+  mysql-rbac:
+    image: mysql:8.1.0
+    ports:
+      - '${RBAC_MYSQL_PORT}:3306'
+    environment:
+      MYSQL_DATABASE: ${RBAC_MYSQL_DB}
+      MYSQL_USER: ${RBAC_MYSQL_USER}
+      MYSQL_PASSWORD: ${RBAC_MYSQL_PASSWORD}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "false"
+      MYSQL_RANDOM_ROOT_PASSWORD: "false"
+
+    volumes:
+      - 'mysql-rbac:/var/lib/mysql'
+    networks:
+      - feathr
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      retries: 5
+      timeout: 5s
+    restart: always
+
+  mysql-registry:
+    image: mysql:8.1.0
+    ports:
+      - '${FEATHR_MYSQL_PORT}:3306'
+    environment:
+      MYSQL_DATABASE: ${FEATHR_MYSQL_DB}
+      MYSQL_USER: ${FEATHR_MYSQL_USER}
+      MYSQL_PASSWORD: ${FEATHR_MYSQL_PASSWORD}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "false"
+      MYSQL_RANDOM_ROOT_PASSWORD: "false"
+    volumes:
+      - 'mysql-registry:/var/lib/mysql'
+    networks:
+      - feathr
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      retries: 5
+      timeout: 5s
+    restart: always
+
+  ui:
+    build:
+      context: ../../
+      dockerfile: ui/Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - feathr
+    restart: always

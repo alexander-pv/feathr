@@ -1,0 +1,201 @@
+version: '3.9'
+
+name: feathr
+
+networks:
+  feathr:
+
+volumes:
+  pgsql-rbac:
+  pgsql-registry:
+  redis:
+  minio:
+
+
+services:
+
+  rbac:
+    build:
+      context: ../../registry/
+      dockerfile: access_control/Dockerfile
+    ports:
+      - "18000:${RBAC_LISTENING_PORT}"
+    environment:
+      RBAC_DATABASE: ${RBAC_DATABASE}
+      RBAC_CONNECTION_STR: ${RBAC_CONNECTION_STR}
+      RBAC_LISTENING_PORT: ${RBAC_LISTENING_PORT}
+      RBAC_API_BASE: ${RBAC_API_BASE}
+      RBAC_API_CLIENT_ID: ${RBAC_API_CLIENT_ID}
+      RBAC_API_AUDIENCE: ${RBAC_API_AUDIENCE}
+      RBAC_AAD_TENANT_ID: ${RBAC_AAD_TENANT_ID}
+      RBAC_AAD_INSTANCE: ${RBAC_AAD_INSTANCE}
+      RBAC_DEFAULT_ADMIN: ${RBAC_DEFAULT_ADMIN}
+      FEATHR_REGISTRY_URL: "http://registry:${FEATHR_REGISTRY_LISTENING_PORT}${FEATHR_API_BASE}"
+      LOGGING_LEVEL: ${LOGGING_LEVEL}
+      UVICORN_LOG_LEVEL: ${UVICORN_LOG_LEVEL}
+    networks:
+      - feathr
+    depends_on:
+      - pgsql-rbac
+    restart: always
+
+  registry:
+    build:
+      context: ../../registry/
+      dockerfile: sql-registry/Dockerfile
+    ports:
+      - "8001:${FEATHR_REGISTRY_LISTENING_PORT}"
+    environment:
+      FEATHR_REGISTRY_DATABASE: ${FEATHR_REGISTRY_DATABASE}
+      FEATHR_REGISTRY_CONNECTION_STR: ${FEATHR_REGISTRY_CONNECTION_STR}
+      FEATHR_REGISTRY_LISTENING_PORT: ${FEATHR_REGISTRY_LISTENING_PORT}
+      FEATHR_API_BASE: ${FEATHR_API_BASE}
+      REGISTRY_DEBUGGING: ${REGISTRY_DEBUGGING:-0}
+      LOGGING_LEVEL: ${LOGGING_LEVEL}
+      UVICORN_LOG_LEVEL: ${UVICORN_LOG_LEVEL}
+    networks:
+      - feathr
+    depends_on:
+      - pgsql-registry
+    restart: always
+
+  pgsql-rbac:
+    image: postgres:15.4
+    command: >
+      -c ssl=on
+      -c ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
+      -c ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+    ports:
+      - '${RBAC_PGSQL_PORT}:5432'
+    environment:
+      POSTGRES_DB: ${RBAC_PGSQL_DB}
+      POSTGRES_USER: ${RBAC_PGSQL_USER}
+      POSTGRES_PASSWORD: ${RBAC_PGSQL_PASSWORD}
+    volumes:
+      - 'pgsql-rbac:/var/lib/postgresql/data'
+    networks:
+      - feathr
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - '-q'
+        - '-d'
+        - '${RBAC_PGSQL_DB}'
+        - '-U'
+        - '${RBAC_PGSQL_USER}'
+      retries: 5
+      timeout: 5s
+    restart: always
+
+  pgsql-registry:
+    image: postgres:15.4
+    command: >
+      -c ssl=on
+      -c ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
+      -c ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+    ports:
+      - '${FEATHR_PGSQL_PORT}:5432'
+    environment:
+      POSTGRES_DB: ${FEATHR_PGSQL_DB}
+      POSTGRES_USER: ${FEATHR_PGSQL_USER}
+      POSTGRES_PASSWORD: ${FEATHR_PGSQL_PASSWORD}
+    volumes:
+      - 'pgsql-registry:/var/lib/postgresql/data'
+    networks:
+      - feathr
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - '-q'
+        - '-d'
+        - '${FEATHR_PGSQL_DB}'
+        - '-U'
+        - '${FEATHR_PGSQL_USER}'
+      retries: 5
+      timeout: 5s
+    restart: always
+
+  ui:
+    build:
+      context: ../../
+      dockerfile: ui/Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - feathr
+    restart: always
+
+  redis:
+    image: redis:7.2.0-alpine3.18
+    ports:
+      - '6379:6379'
+    command: redis-server --loglevel warning --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis:/data
+    networks:
+      - feathr
+    restart: always
+
+  minio:
+    image: minio/minio:RELEASE.2023-08-23T10-07-06Z
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio:/data
+    restart: always
+    networks:
+      - feathr
+
+  spark-master:
+    image: bitnami/spark:3.3.3
+    ports:
+      - "8080:8080" # Spark Master UI
+      - "7077:7077" # Spark Master Port
+    environment:
+      - SPARK_MODE=master
+    restart: always
+    networks:
+      - feathr
+
+  spark-worker:
+    image: bitnami/spark:3.3.3
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077 # Connect to the Spark Master
+    restart: always
+    networks:
+      - feathr
+
+  sandbox:
+    build:
+      context: ../../
+      dockerfile: feathr-sandbox/docker/FeathrSandbox.Dockerfile
+      args:
+        FEATHR_RUNTIME_PATH: ${FEATHR_RUNTIME_PATH}
+    environment:
+      FEATHR_RUNTIME_PATH: ${FEATHR_RUNTIME_PATH}
+      FEATHR_CONFIG_PATH: ${FEATHR_CONFIG_PATH}
+      SPARK_LOCAL_IP: "127.0.0.1"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      DATA_FILE_PATH: ${DATA_FILE_PATH}
+      INTERACTIVE_CREDENTIAL: 0
+    ports:
+      - "8888:8888"
+      - "7080:7080"
+    volumes:
+      - ../../docs/samples:/home/jovyan/work/samples
+      - ../../feathr-sandbox/feathr_init:/home/jovyan/work/feathr_init
+    restart: always
+    networks:
+      - feathr

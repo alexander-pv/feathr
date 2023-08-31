@@ -1,0 +1,40 @@
+[project]
+name = "feathr_registry"
+version = "0.0.1"
+description = "Python Package with Feathr Registry server"
+
+authors = [
+    #    { "name" = "Full Name" },
+]
+maintainers = [
+    #    { "name" = "Full Name" },
+]
+classifiers = [
+    "Operating System :: Unix",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10"
+]
+requires-python = ">=3.9"
+dependencies = [
+    "Cython==0.29.33",
+    "pymssql==2.2.7",
+    "fastapi==0.88.0",
+    "uvicorn==0.20.0",
+    "sqlalchemy==1.4.46",
+    "loguru==0.7.0"
+]
+
+[project.optional-dependencies]
+test = [
+    #    "pytest>=x.x",
+    #    "pytest-cov>=x.x"
+]
+
+
+[build-system]
+requires = [
+    "setuptools",
+    "wheel"
+]

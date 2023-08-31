@@ -1,3 +1,5 @@
+# TODO: It would be more pythonic to use dataclasses objects which can represent a group of constants
+
 OUTPUT_PATH_TAG = "output_path"
 # spark config for output format setting
 OUTPUT_FORMAT = "spark.feathr.outputFormat"
@@ -27,7 +29,6 @@ TYPEDEF_ANCHOR_FEATURE = f"feathr_anchor_feature_{REGISTRY_TYPEDEF_VERSION}"
 TYPEDEF_ARRAY_ANCHOR = f"array<feathr_anchor_{REGISTRY_TYPEDEF_VERSION}>"
 TYPEDEF_ARRAY_DERIVED_FEATURE = f"array<feathr_derived_feature_{REGISTRY_TYPEDEF_VERSION}>"
 TYPEDEF_ARRAY_ANCHOR_FEATURE = f"array<feathr_anchor_feature_{REGISTRY_TYPEDEF_VERSION}>"
-
 
 JOIN_CLASS_NAME = "com.linkedin.feathr.offline.job.FeatureJoinJob"
 GEN_CLASS_NAME = "com.linkedin.feathr.offline.job.FeatureGenJob"

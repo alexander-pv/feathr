@@ -1,0 +1,108 @@
+version: '3.9'
+
+name: feathr
+
+networks:
+  feathr:
+
+volumes:
+  mariadb-rbac:
+  mariadb-registry:
+
+
+services:
+
+  rbac:
+    build:
+      context: ../../registry/
+      dockerfile: access_control/Dockerfile
+    ports:
+      - "18000:${RBAC_LISTENING_PORT}"
+    environment:
+      RBAC_DATABASE: ${RBAC_DATABASE}
+      RBAC_CONNECTION_STR: ${RBAC_CONNECTION_STR}
+      RBAC_LISTENING_PORT: ${RBAC_LISTENING_PORT}
+      RBAC_API_BASE: ${RBAC_API_BASE}
+      RBAC_API_CLIENT_ID: ${RBAC_API_CLIENT_ID}
+      RBAC_API_AUDIENCE: ${RBAC_API_AUDIENCE}
+      RBAC_AAD_TENANT_ID: ${RBAC_AAD_TENANT_ID}
+      RBAC_AAD_INSTANCE: ${RBAC_AAD_INSTANCE}
+      RBAC_DEFAULT_ADMIN: ${RBAC_DEFAULT_ADMIN}
+      FEATHR_REGISTRY_URL: "http://registry:${FEATHR_REGISTRY_LISTENING_PORT}${FEATHR_API_BASE}"
+      LOGGING_LEVEL: ${LOGGING_LEVEL}
+      UVICORN_LOG_LEVEL: ${UVICORN_LOG_LEVEL}
+    networks:
+      - feathr
+    depends_on:
+      - mariadb-rbac
+    restart: always
+
+  registry:
+    build:
+      context: ../../registry
+      dockerfile: ../../../registry/sql-registry/Dockerfile
+    ports:
+      - "8001:${FEATHR_REGISTRY_LISTENING_PORT}"
+    environment:
+      FEATHR_REGISTRY_DATABASE: ${FEATHR_REGISTRY_DATABASE}
+      FEATHR_REGISTRY_CONNECTION_STR: ${FEATHR_REGISTRY_CONNECTION_STR}
+      FEATHR_REGISTRY_LISTENING_PORT: ${FEATHR_REGISTRY_LISTENING_PORT}
+      FEATHR_API_BASE: ${FEATHR_API_BASE}
+      REGISTRY_DEBUGGING: ${REGISTRY_DEBUGGING:-0}
+      LOGGING_LEVEL: ${LOGGING_LEVEL}
+      UVICORN_LOG_LEVEL: ${UVICORN_LOG_LEVEL}
+    networks:
+      - feathr
+    depends_on:
+      - mariadb-registry
+    restart: always
+
+  mariadb-rbac:
+    image: mariadb:11.0.3
+    ports:
+      - '${RBAC_MARIADB_PORT}:3306'
+    environment:
+      MARIADB_DATABASE: ${RBAC_MARIADB_DB}
+      MARIADB_USER: ${RBAC_MARIADB_USER}
+      MARIADB_PASSWORD: ${RBAC_MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: "root"
+    volumes:
+      - 'mariadb-rbac:/var/lib/mysql'
+    networks:
+      - feathr
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      retries: 5
+      timeout: 5s
+    restart: always
+
+  mariadb-registry:
+    image: mariadb:11.0.3
+    ports:
+      - '${FEATHR_MARIADB_PORT}:3306'
+    environment:
+      MARIADB_DATABASE: ${FEATHR_MARIADB_DB}
+      MARIADB_USER: ${FEATHR_MARIADB_USER}
+      MARIADB_PASSWORD: ${FEATHR_MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: "root"
+    volumes:
+      - 'mariadb-registry:/var/lib/mysql'
+    networks:
+      - feathr
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      retries: 5
+      timeout: 5s
+    restart: always
+
+  ui:
+    build:
+      context: ../../
+      dockerfile: ui/Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - feathr
+    restart: always

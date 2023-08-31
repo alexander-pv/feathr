@@ -9,6 +9,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
+# TODO Remove `import *` asap
 from pyspark import *
 
 from feathr.constants import OUTPUT_PATH_TAG

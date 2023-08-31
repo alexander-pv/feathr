@@ -40,7 +40,7 @@ echo "Setting subscription to $subscription_id, Creating $service_principal_name
 az account set -s $subscription_id
 
 echo "The output includes credentials that you must protect. Be sure that you do not include these credentials in your code or check the credentials into your source control. As an alternative, consider using managed identities if available to avoid the need to use credentials."
-# az ad sp create-for-rbac --name $service_principal_name --role Contributor
+# az ad sp create-for-db_rbac --name $service_principal_name --role Contributor
 sp_password=$(az ad sp create-for-rbac --name $service_principal_name --role Contributor --query "[password]"  --output tsv)
 sp_objectid=$(az ad sp list --display-name $service_principal_name --query "[].{objectId:objectId}" --output tsv)
 sp_appid=$(az ad sp list --display-name $service_principal_name --query "[].{appId:appId}" --output tsv)

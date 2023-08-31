@@ -30,39 +30,24 @@ cat $envfile
 # Start nginx
 nginx
 
-# Start API app
-LISTENING_PORT="8000"
-
 if [ "$REACT_APP_ENABLE_RBAC" == "true" ]; then
-    echo "RBAC flag configured and set to true, launch both rbac and reigstry apps"
+    echo "RBAC flag configured and set to true, launch both rbac and registry apps"
     if [ "x$PURVIEW_NAME" == "x" ]; then
         echo "Purview flag is not configured, run SQL registry"
-        cd sql-registry
-        nohup uvicorn main:app --host 0.0.0.0 --port 18000 &
+        python -m feathr_registry &
     else
         echo "Purview flag is configured, run Purview registry"
-        cd purview-registry
-        nohup uvicorn main:app --host 0.0.0.0 --port 18000 &
+        cd purview-registry &&  python main.py &
     fi
-    echo "Run rbac app"
-    cd ../access_control
-    export RBAC_REGISTRY_URL="http://127.0.0.1:18000/api/v1"
-    export RBAC_API_BASE="${API_BASE}"
-    export RBAC_AAD_INSTANCE="https://login.microsoftonline.com"
-    export RBAC_API_CLIENT_ID="${REACT_APP_AZURE_CLIENT_ID}"
-    export RBAC_AAD_TENANT_ID="${REACT_APP_AZURE_TENANT_ID}"
-    export RBAC_API_AUDIENCE="${REACT_APP_AZURE_CLIENT_ID}"
-    export RBAC_CONNECTION_STR="${CONNECTION_STR}"
-    uvicorn main:app --host 0.0.0.0 --port $LISTENING_PORT
+    echo "Run RBAC app"
+    python -m feathr_rbac
 else
     echo "RBAC flag not configured or not equal to true, only launch registry app"
     if [ "x$PURVIEW_NAME" == "x" ]; then
         echo "Purview flag is not configured, run SQL registry"
-        cd sql-registry
-        uvicorn main:app --host 0.0.0.0 --port $LISTENING_PORT
+        python -m feathr_registry
     else
         echo "Purview flag is configured, run Purview registry"
-        cd purview-registry
-        uvicorn main:app --host 0.0.0.0 --port $LISTENING_PORT
+        cd purview-registry && python main.py
     fi
 fi

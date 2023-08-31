@@ -101,7 +101,7 @@ setup(
         "ipython",  # for chat in notebook
         "revChatGPT",
     ],
-    tests_require=[  # TODO: This has been depricated
+    tests_require=[  # TODO: This has been deprecated
         "pytest",
     ],
     extras_require=extras_require,

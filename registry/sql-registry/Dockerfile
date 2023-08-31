@@ -1,9 +1,16 @@
 FROM python:3.9
 
-COPY ./ /usr/src
 
-WORKDIR /usr/src
-RUN pip install -r requirements.txt
+COPY . /usr/src/registry
+## Install dependencies
+RUN apt-get update -y && apt-get install -y freetds-dev unixodbc
+# Registry package
+WORKDIR /usr/src/registry/sql-registry
+RUN pip install .
+# Common handlers package
+WORKDIR /usr/src/registry/handlers
+RUN pip install .
 
-# Start web server
-CMD [ "uvicorn","main:app","--host", "0.0.0.0", "--port", "80" ]
+## Start server
+WORKDIR /usr/src/registry
+CMD python -m feathr_registry

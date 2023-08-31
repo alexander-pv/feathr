@@ -1,17 +1,15 @@
 import base64
 import copy
+import importlib.util
 import json
 import logging
 import os
 import tempfile
 from typing import Any, Dict, List, Tuple, Union, Set
 
-from azure.identity import DefaultAzureCredential
-from jinja2 import Template
-from loguru import logger
-from pyhocon import ConfigFactory
 import redis
-
+from azure.identity import DefaultAzureCredential
+# TODO: It takes extra time to trace objects because of * import. So this anti-pattern should be replaced
 from feathr.constants import *
 from feathr.definition._materialization_utils import _to_materialization_config
 from feathr.definition.anchor import FeatureAnchor
@@ -21,7 +19,7 @@ from feathr.definition.feature_derivations import DerivedFeature
 from feathr.definition.materialization_settings import MaterializationSettings
 from feathr.definition.monitoring_settings import MonitoringSettings
 from feathr.definition.query_feature_list import FeatureQuery
-from feathr.definition.settings import ObservationSettings, ConflictsAutoCorrection
+from feathr.definition.settings import ObservationSettings
 from feathr.definition.sink import HdfsSink, Sink
 from feathr.definition.source import InputContext
 from feathr.definition.transformation import WindowAggTransformation
@@ -39,7 +37,9 @@ from feathr.utils._file_utils import write_to_file
 from feathr.utils.feature_printer import FeaturePrinter
 from feathr.utils.spark_job_params import FeatureGenerationJobParams, FeatureJoinJobParams
 from feathr.version import get_version
-import importlib.util
+from jinja2 import Template
+from loguru import logger
+from pyhocon import ConfigFactory
 
 
 class FeathrClient(object):
@@ -60,11 +60,11 @@ class FeathrClient(object):
     """
 
     def __init__(
-        self,
-        config_path: str = "./feathr_config.yaml",
-        local_workspace_dir: str = None,
-        credential: Any = None,
-        project_registry_tag: Dict[str, str] = None,
+            self,
+            config_path: str = "./feathr_config.yaml",
+            local_workspace_dir: str = None,
+            credential: Any = None,
+            project_registry_tag: Dict[str, str] = None,
     ):
         """Initialize Feathr Client.
         Configuration values used by the Feathr are evaluated in the following precedence, with items higher on the list taking priority.
@@ -78,6 +78,7 @@ class FeathrClient(object):
             credential (optional): Azure credential to access cloud resources, most likely to be the returned result of DefaultAzureCredential(). If not set, Feathr will initialize DefaultAzureCredential() inside the __init__ function to get credentials.
             project_registry_tag (optional): Adding tags for project in Feathr registry. This might be useful if you want to tag your project as deprecated, or allow certain customizations on project level. Default is empty
         """
+        # TODO: Code cleanup & logging is required in constructor
         self.logger = logging.getLogger(__name__)
         # Redis key separator
         self._KEY_SEPARATOR = ":"
@@ -97,6 +98,8 @@ class FeathrClient(object):
 
         # Load all configs from yaml at initialization
         # DO NOT load any configs from yaml during runtime.
+        # TODO: This statement should be logged. \
+        #  Client also should check whether any config is loading during runtime or class initialization
         self.project_name = self.env_config.get("project_config__project_name")
 
         # Redis configs. This is optional unless users have configured Redis host.
@@ -119,7 +122,7 @@ class FeathrClient(object):
         self.jdbc_enabled = self.env_config.get("offline_store__jdbc__jdbc_enabled")
         self.snowflake_enabled = self.env_config.get("offline_store__snowflake__snowflake_enabled")
         if not (
-            self.s3_enabled or self.adls_enabled or self.wasb_enabled or self.jdbc_enabled or self.snowflake_enabled
+                self.s3_enabled or self.adls_enabled or self.wasb_enabled or self.jdbc_enabled or self.snowflake_enabled
         ):
             self.logger.warning("No offline storage enabled.")
 
@@ -132,6 +135,7 @@ class FeathrClient(object):
         self.spark_runtime = self.env_config.get("spark_config__spark_cluster")
 
         self.credential = credential
+        # TODO: All spark setup should not be here. Encapsulation is required
         if self.spark_runtime not in {"azure_synapse", "databricks", "local"}:
             raise RuntimeError(
                 f"{self.spark_runtime} is not supported. Only 'azure_synapse', 'databricks' and 'local' are currently supported."
@@ -178,6 +182,7 @@ class FeathrClient(object):
         self.config_helper = FeathrConfigHelper()
 
         # initialize registry
+        # TODO: It would be better if registry was represented by only one object no matter rdbms, purview or any possible new store.
         self.registry = None
         registry_endpoint = self.env_config.get("feature_registry__api_endpoint")
         azure_purview_name = self.env_config.get("feature_registry__purview__purview_name")
@@ -224,7 +229,8 @@ class FeathrClient(object):
         """Registers features based on the current workspace
 
         Args:
-            from_context: If from_context is True (default), the features will be generated from the current context, with the previous built features in client.build(). Otherwise, the features will be generated from
+            from_context: If from_context is True (default), the features will be generated from the current context,
+             with the previous built features in client.build(). Otherwise, the features will be generated from
             configuration files.
         """
 
@@ -246,10 +252,10 @@ class FeathrClient(object):
             self.registry.register_features(self.local_workspace_dir, from_context=from_context)
 
     def build_features(
-        self,
-        anchor_list: List[FeatureAnchor] = [],
-        derived_feature_list: List[DerivedFeature] = [],
-        verbose: bool = False,
+            self,
+            anchor_list: List[FeatureAnchor] = [],
+            derived_feature_list: List[DerivedFeature] = [],
+            verbose: bool = False,
     ):
         """Build features based on the current workspace. all actions that triggers a spark job will be based on the
         result of this action.
@@ -523,14 +529,14 @@ class FeathrClient(object):
         self.logger.info("Redis connection is successful and completed.")
 
     def get_offline_features(
-        self,
-        observation_settings: ObservationSettings,
-        feature_query: Union[FeatureQuery, List[FeatureQuery]],
-        output_path: Union[str, Sink],
-        execution_configurations: Union[SparkExecutionConfiguration, Dict[str, str]] = {},
-        config_file_name: str = "feature_join_conf/feature_join.conf",
-        dataset_column_names: Set[str] = None,
-        verbose: bool = False,
+            self,
+            observation_settings: ObservationSettings,
+            feature_query: Union[FeatureQuery, List[FeatureQuery]],
+            output_path: Union[str, Sink],
+            execution_configurations: Union[SparkExecutionConfiguration, Dict[str, str]] = {},
+            config_file_name: str = "feature_join_conf/feature_join.conf",
+            dataset_column_names: Set[str] = None,
+            verbose: bool = False,
     ):
         """
         Get offline features for the observation dataset
@@ -558,7 +564,7 @@ class FeathrClient(object):
                 observation_settings.is_file_path,
             )
             if (
-                dataset_column_names_from_path is None or len(dataset_column_names_from_path) == 0
+                    dataset_column_names_from_path is None or len(dataset_column_names_from_path) == 0
             ) and dataset_column_names is None:
                 self.logger.warning(
                     f"Feathr is unable to read the Observation data from {observation_settings.observation_path} due to permission issue or invalid path. Please either grant the permission or supply the observation column names in the filed: observation_column_names."
@@ -616,11 +622,11 @@ class FeathrClient(object):
         )
 
     def _get_offline_features_with_config(
-        self,
-        feature_join_conf_path="feature_join_conf/feature_join.conf",
-        output_path: Union[str, Sink] = "",
-        execution_configurations: Dict[str, str] = {},
-        udf_files=[],
+            self,
+            feature_join_conf_path="feature_join_conf/feature_join.conf",
+            output_path: Union[str, Sink] = "",
+            execution_configurations: Dict[str, str] = {},
+            udf_files=[],
     ):
         """Joins the features to your offline observation dataset based on the join config.
 
@@ -659,18 +665,18 @@ class FeathrClient(object):
             job_tags=job_tags,
             main_class_name=JOIN_CLASS_NAME,
             arguments=[
-                "--join-config",
-                self.feathr_spark_launcher.upload_or_get_cloud_path(feature_join_job_params.join_config_path),
-                "--input",
-                feature_join_job_params.observation_path,
-                "--output",
-                feature_join_job_params.job_output_path,
-                "--feature-config",
-                self.feathr_spark_launcher.upload_or_get_cloud_path(feature_join_job_params.feature_config),
-                "--num-parts",
-                self.output_num_parts,
-            ]
-            + self._get_offline_storage_arguments(),
+                          "--join-config",
+                          self.feathr_spark_launcher.upload_or_get_cloud_path(feature_join_job_params.join_config_path),
+                          "--input",
+                          feature_join_job_params.observation_path,
+                          "--output",
+                          feature_join_job_params.job_output_path,
+                          "--feature-config",
+                          self.feathr_spark_launcher.upload_or_get_cloud_path(feature_join_job_params.feature_config),
+                          "--num-parts",
+                          self.output_num_parts,
+                      ]
+                      + self._get_offline_storage_arguments(),
             reference_files_path=[],
             configuration=execution_configurations,
             properties=self._collect_secrets(feature_join_job_params.secrets),
@@ -717,10 +723,10 @@ class FeathrClient(object):
             raise RuntimeError("Spark job failed.")
 
     def monitor_features(
-        self,
-        settings: MonitoringSettings,
-        execution_configurations: Union[SparkExecutionConfiguration, Dict[str, str]] = {},
-        verbose: bool = False,
+            self,
+            settings: MonitoringSettings,
+            execution_configurations: Union[SparkExecutionConfiguration, Dict[str, str]] = {},
+            verbose: bool = False,
     ):
         """Create a offline job to generate statistics to monitor feature data
 
@@ -778,11 +784,11 @@ class FeathrClient(object):
         return True
 
     def materialize_features(
-        self,
-        settings: MaterializationSettings,
-        execution_configurations: Union[SparkExecutionConfiguration, Dict[str, str]] = {},
-        verbose: bool = False,
-        allow_materialize_non_agg_feature: bool = False,
+            self,
+            settings: MaterializationSettings,
+            execution_configurations: Union[SparkExecutionConfiguration, Dict[str, str]] = {},
+            verbose: bool = False,
+            allow_materialize_non_agg_feature: bool = False,
     ):
         """Materialize feature data
 
@@ -876,12 +882,12 @@ class FeathrClient(object):
         return results
 
     def _materialize_features_with_config(
-        self,
-        feature_gen_conf_path: str = "feature_gen_conf/feature_gen.conf",
-        execution_configurations: Dict[str, str] = {},
-        udf_files: List = [],
-        secrets: List = [],
-        output_path: str = None,
+            self,
+            feature_gen_conf_path: str = "feature_gen_conf/feature_gen.conf",
+            execution_configurations: Dict[str, str] = {},
+            udf_files: List = [],
+            secrets: List = [],
+            output_path: str = None,
     ):
         """Materializes feature data based on the feature generation config. The feature
         data will be materialized to the destination specified in the feature generation config.
@@ -923,17 +929,17 @@ class FeathrClient(object):
         if self.env_config.get_from_env_or_akv("KAFKA_SASL_JAAS_CONFIG"):
             optional_params = optional_params + ["--kafka-config", self._get_kafka_config_str()]
         arguments = (
-            [
-                "--generation-config",
-                self.feathr_spark_launcher.upload_or_get_cloud_path(generation_config.generation_config_path),
-                # Local Config, comma seperated file names
-                "--feature-config",
-                self.feathr_spark_launcher.upload_or_get_cloud_path(generation_config.feature_config),
-                "--redis-config",
-                self._getRedisConfigStr(),
-            ]
-            + self._get_offline_storage_arguments()
-            + optional_params
+                [
+                    "--generation-config",
+                    self.feathr_spark_launcher.upload_or_get_cloud_path(generation_config.generation_config_path),
+                    # Local Config, comma seperated file names
+                    "--feature-config",
+                    self.feathr_spark_launcher.upload_or_get_cloud_path(generation_config.feature_config),
+                    "--redis-config",
+                    self._getRedisConfigStr(),
+                ]
+                + self._get_offline_storage_arguments()
+                + optional_params
         )
         monitoring_config_str = self._get_monitoring_config_str()
         if monitoring_config_str:
@@ -961,6 +967,9 @@ class FeathrClient(object):
     def _getRedisConfigStr(self):
         """Construct the Redis config string. The host, port, credential and other parameters can be set via environment
         variables."""
+        # TODO: It seems like a violation of single responsibility principle of this class.
+        #  Redis config parsing could be placed into separate config object
+        #  The same thing is valid for private methods with config parsing below
         password = self.env_config.get_from_env_or_akv(REDIS_PASSWORD)
         host = self.redis_host
         port = self.redis_port
@@ -1115,7 +1124,7 @@ class FeathrClient(object):
         return prop_and_value
 
     def get_features_from_registry(
-        self, project_name: str, return_keys: bool = False, verbose: bool = False
+            self, project_name: str, return_keys: bool = False, verbose: bool = False
     ) -> Union[Dict[str, FeatureBase], Tuple[Dict[str, FeatureBase], Dict[str, Union[TypedKey, List[TypedKey]]]]]:
         """
         Get feature from registry by project name. The features got from registry are automatically built.

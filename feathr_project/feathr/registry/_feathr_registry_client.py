@@ -64,11 +64,11 @@ class _FeatureRegistry(FeathrRegistry):
         self.project_tags = project_tags
         self.endpoint = endpoint
         # TODO: expand to more credential provider
-        # If FEATHR_SANDBOX is set in the environment variable, don't do auth
         self.credential = (
-            DefaultAzureCredential(exclude_interactive_browser_credential=False)
-            if credential is None and not os.environ.get("FEATHR_SANDBOX")
-            else credential
+            DefaultAzureCredential(
+                exclude_interactive_browser_credential=bool(os.getenv("INTERACTIVE_CREDENTIAL", False))
+            )
+            if credential is None else credential
         )
         self.project_id = None
 
@@ -210,8 +210,6 @@ class _FeatureRegistry(FeathrRegistry):
         # TODO: expand to more credential providers
         return (
             {"Authorization": f'Bearer {self.credential.get_token("https://management.azure.com/.default").token}'}
-            if not os.environ.get("FEATHR_SANDBOX")
-            else None
         )
 
 

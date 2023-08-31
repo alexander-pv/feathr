@@ -111,7 +111,7 @@ You can simply think an Azure Service Principal is an account that can be used f
 # Create a resource group to group all the resources that will be used later
 az group create -l $location -n $resource_group_name
 
-sp_password=$(az ad sp create-for-rbac --name $service_principal_name --role Contributor --scopes /subscriptions/$subscription_id/resourceGroups/$resource_group_name --query "[password]" --output tsv)
+sp_password=$(az ad sp create-for-db_rbac --name $service_principal_name --role Contributor --scopes /subscriptions/$subscription_id/resourceGroups/$resource_group_name --query "[password]" --output tsv)
 sp_appid=$(az ad sp list --display-name $service_principal_name --query "[].{appId:appId}" --output tsv)
 sp_tenantid=$(az ad sp list --display-name $service_principal_name --query "[].{appOwnerOrganizationId:appOwnerOrganizationId}" --output tsv)
 echo "AZURE_CLIENT_ID: $sp_appid"

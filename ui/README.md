@@ -27,13 +27,15 @@ This should launch [http://localhost:3000](http://localhost:3000) on your web br
 
 #### [Optional] Override configurations for local development
 
-- **Point to a different backend endpoint**: by default, UI talks to live backend API at https://feathr-sql-registry.azurewebsites.net. To point to a custom backend API (e.g. running locally), create a .env.local in this directory and set REACT_APP_API_ENDPOINT, for example:
+- **Point to a different backend endpoint**: by default, UI talks to live backend API at https://feathr-sql-registry.azurewebsites.net. 
+To point to a custom backend API (e.g. running locally), create a .env.local in this directory and set REACT_APP_API_ENDPOINT, for example:
 
 ```
 REACT_APP_API_ENDPOINT=http://localhost:8080
 ```
 
-- **Use different authentication settings**: by default, UI authenticates with an Azure AD application with multiple tenants authentication enabled. To change to use a different Azure AD application, create a .env.local in this directory and set REACT_APP_AZURE_CLIENT_ID and REACT_APP_AZURE_TENANT_ID, for example:
+- **Use different authentication settings**: by default, UI authenticates with an Azure AD application with multiple tenants authentication enabled. 
+To change to use a different Azure AD application, create a .env.local in this directory and set REACT_APP_AZURE_CLIENT_ID and REACT_APP_AZURE_TENANT_ID, for example:
 
 ```
 REACT_APP_AZURE_CLIENT_ID=<REPLACE_WITH_YOUR_AZURE_CLIENT_ID>
@@ -53,7 +55,8 @@ Following tools are used to lint and format code:
 
 #### Linting
 
-If ESLint plugin is installed, vscode will pick up configuration from [.eslintrc](.eslintrc) and automatically lint the code on save. To lint code for entire code base, simply run:
+If ESLint plugin is installed, vscode will pick up configuration from [.eslintrc](.eslintrc) and automatically lint the code on save. 
+To lint code for entire code base, simply run:
 
 ```
 npm run lint-eslint
@@ -63,7 +66,9 @@ This command will automatically fix all problems that can be fixed, and list the
 
 #### Formatting with Prettier
 
-Prettier is an opinionated code formatter for Typescript. It removes all original styling and ensures that all outputted code conforms to a consistent style. If Prettier is installed, vscode will pick up configuration from [.prettierrc](.prettierrc) file and automatically format code on save. To format code for entire code base, simply run:
+Prettier is an opinionated code formatter for Typescript. It removes all original styling and ensures that all outputted code conforms to a consistent style.
+If Prettier is installed, vscode will pick up configuration from [.prettierrc](.prettierrc) file and automatically format code on save. 
+To format code for entire code base, simply run:
 
 ```
 npm run format

@@ -16,6 +16,7 @@ import { getMsalConfig } from '@/utils/utils'
 const msalInstance = getMsalConfig()
 const getApiBaseUrl = () => {
   let endpoint = process.env.REACT_APP_API_ENDPOINT
+  console.log('ApiBaseUrl: ' + endpoint)
   if (!endpoint || endpoint === '') {
     endpoint = window.location.protocol + '//' + window.location.host
   }
@@ -132,6 +133,7 @@ export const listUserRole = async () => {
   await getIdToken(msalInstance)
   const axios = await authAxios(msalInstance)
   return await axios.get<UserRole[]>(`${getApiBaseUrl()}/userroles`, {}).then((response) => {
+    console.log('listUserRole response: ' + response.data)
     return response.data
   })
 }
@@ -203,7 +205,7 @@ export const getIdToken = async (msalInstance: PublicClientApplication): Promise
         })
       }
     })
-
+  console.log('Fetched idToken: ' + idToken)
   return idToken
 }
 
@@ -228,7 +230,7 @@ export const authAxios = async (msalInstance: PublicClientApplication) => {
       } else if (error.response?.status === 404) {
         globalStore.navigate?.('/404', {
           replace: true,
-          state: `the '${globalStore.project}' project is not found.`
+          state: `the '${globalStore.project}' project is not found`
         })
       }
       return Promise.reject(error.response.data)

@@ -1,0 +1,42 @@
+[project]
+name = "feathr_handlers"
+version = "0.0.1"
+description = "Python Package with Feathr routines"
+
+authors = [
+    #    { "name" = "Full Name" },
+]
+maintainers = [
+    #    { "name" = "Full Name" },
+]
+classifiers = [
+    "Operating System :: Unix",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10"
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pymssql==2.2.7",
+    "sqlalchemy==1.4.46",
+    "psycopg2==2.9.7",
+    "pymysql==1.1.0",
+    "pyodbc==4.0.39",
+    "cryptography==41.0.3",
+    "loguru==0.7.0",
+    "randomname==0.2.1"
+]
+
+[project.optional-dependencies]
+test = [
+    #    "pytest>=x.x",
+    #    "pytest-cov>=x.x"
+]
+
+
+[build-system]
+requires = [
+    "setuptools",
+    "wheel"
+]
